@@ -1,0 +1,28 @@
+{
+  "name": "coolify-template-nodejs-openapi",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Docker + pnpm + OpenAPI dev template (Fastify + Vite)",
+  "license": "Apache-2.0",
+  "packageManager": "pnpm@9.0.0",
+  "scripts": {
+    "dev": "node dev/scripts/runner.js dev",
+    "dev:local": "node dev/scripts/runner.js local && concurrently -k \"pnpm nx run server:dev\" \"pnpm nx run web:dev\"",
+    "dev:server": "pnpm nx run server:dev",
+    "dev:web": "pnpm nx run web:dev",
+    "dev:clear": "node dev/scripts/runner.js clear && rimraf apps/server/dist apps/web/dist",
+    "dev:nuke": "node dev/scripts/runner.js nuke",
+    "gen:api": "OPENAPI_URL=${OPENAPI_URL:-http://localhost:4000/docs/json} swagger-typescript-api generate -p $OPENAPI_URL -o apps/web/src/api -n index.ts --axios --unwrap-response-data --module-name-first --jsdoc --silent",
+    "build": "pnpm nx run-many -t build",
+    "typecheck": "pnpm nx run-many -t typecheck",
+    "lint": "pnpm nx run web:lint",
+    "format": "pnpm nx run web:format"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.1",
+    "nx": "^20.0.0",
+    "rimraf": "^6.0.1",
+    "rxjs": "^7.8.1",
+    "swagger-typescript-api": "^13.2.16"
+  }
+}
