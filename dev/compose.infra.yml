@@ -1,0 +1,41 @@
+name: ${PROJECT_NAME}-infra
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_PASSWORD: dev
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 5s
+      retries: 5
+    networks:
+      dev_net:
+        aliases:
+          - postgres
+
+  redis:
+    image: redis:alpine
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    networks:
+      dev_net:
+        aliases:
+          - redis
+
+volumes:
+  postgres_data:
+    name: ${PROJECT_NAME}_dev_postgres
+  redis_data:
+    name: ${PROJECT_NAME}_dev_redis
+
+networks:
+  dev_net:
+    name: ${PROJECT_NAME}_dev_net
+    driver: bridge

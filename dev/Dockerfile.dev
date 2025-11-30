@@ -1,0 +1,26 @@
+# 开发镜像，支持 pnpm 与源码热更新
+FROM node:20-bookworm
+
+WORKDIR /app
+RUN npm install -g pnpm
+RUN npm config set registry https://registry.npmmirror.com
+
+# 依赖缓存层（将 store 写入镜像内，避免 runtime 缺失）
+ENV PNPM_STORE_PATH=/app/.pnpm-store
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/server/package.json ./apps/server/package.json
+COPY apps/web/package.json ./apps/web/package.json
+
+RUN pnpm install --frozen-lockfile --prod=false \
+  && pnpm install --dir apps/server --frozen-lockfile --prod=false \
+  && pnpm install --dir apps/web --frozen-lockfile --prod=false
+
+# 基础源代码（后续 watch 会同步更新）
+COPY . .
+
+COPY dev/entrypoint.sh /app/dev/entrypoint.sh
+ENTRYPOINT ["/app/dev/entrypoint.sh"]
+
+EXPOSE 4000
+EXPOSE 5173
+CMD ["pnpm", "dev"]

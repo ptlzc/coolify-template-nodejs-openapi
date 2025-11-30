@@ -1,0 +1,65 @@
+name: ${PROJECT_NAME}-dev
+
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: dev/Dockerfile.dev
+    command: ['pnpm', 'nx', 'run', 'server:dev']
+    environment:
+      - PORT=4000
+      - NODE_ENV=development
+      - DATABASE_URL=postgres://postgres:dev@postgres:5432/telegram_helper
+      - REDIS_URL=redis://redis:6379
+    ports:
+      - '4000:4000'
+    networks:
+      - dev_net
+    develop:
+      watch:
+        - action: sync
+          path: ../apps/server/src
+          target: /app/apps/server/src
+          ignore:
+            - node_modules/
+        - action: sync
+          path: ../apps/server/package.json
+          target: /app/apps/server/package.json
+        - action: rebuild
+          path: ../package.json
+        - action: rebuild
+          path: ../pnpm-lock.yaml
+
+  web:
+    build:
+      context: ..
+      dockerfile: dev/Dockerfile.dev
+    command: ['sh', '/app/dev/gen-and-dev-web.sh']
+    environment:
+      - VITE_PROXY_TARGET=http://api:4000
+      - OPENAPI_URL=http://api:4000/docs/json
+    ports:
+      - '5173:5173'
+    networks:
+      - dev_net
+    depends_on:
+      - api
+    develop:
+      watch:
+        - action: sync
+          path: ../apps/web/src
+          target: /app/apps/web/src
+          ignore:
+            - node_modules/
+        - action: sync
+          path: ../apps/web/package.json
+          target: /app/apps/web/package.json
+        - action: rebuild
+          path: ../package.json
+        - action: rebuild
+          path: ../pnpm-lock.yaml
+
+networks:
+  dev_net:
+    external: true
+    name: ${PROJECT_NAME}_dev_net
