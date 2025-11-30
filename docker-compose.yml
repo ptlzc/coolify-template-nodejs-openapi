@@ -1,0 +1,58 @@
+version: '3.9'
+services:
+  api:
+    build:
+      context: .
+      dockerfile: apps/server/Dockerfile
+    image: ${REGISTRY:-registry.cn-shanghai.aliyuncs.com}/${NAMESPACE:-ptlzc}/${BACKEND_REPO:-coolify-template-nodejs-openapi-api}:${TAG:-dev}
+    environment:
+      - PORT=4000
+      - NODE_ENV=production
+    ports:
+      - '4000:4000'
+    depends_on:
+      - redis
+      - postgres
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://localhost:4000/healthz']
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        API_BASE_URL: http://api:4000/api
+    image: ${REGISTRY:-registry.cn-shanghai.aliyuncs.com}/${NAMESPACE:-ptlzc}/${FRONTEND_REPO:-coolify-template-nodejs-openapi-web}:${TAG:-dev}
+    depends_on:
+      - api
+    ports:
+      - '4173:80'
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://localhost/healthz']
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
+  redis:
+    image: redis:7-alpine
+    command: ['redis-server', '--appendonly', 'yes']
+    volumes:
+      - ./data/redis:/data
+    ports:
+      - '6379:6379'
+
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=telegram
+      - POSTGRES_PASSWORD=telegram
+      - POSTGRES_DB=telegram_helper
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    ports:
+      - '5432:5432'

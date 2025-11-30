@@ -1,0 +1,50 @@
+services:
+  api:
+    image: ${REGISTRY:-registry.cn-shanghai.aliyuncs.com}/${NAMESPACE:-ptlzc}/${BACKEND_REPO:-coolify-template-nodejs-openapi-api}:${TAG:-latest}
+    environment:
+      - PORT=4000
+      - NODE_ENV=production
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://localhost:4000/healthz']
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=coolify
+      - traefik.http.routers.coolify-template-nodejs-openapi-api.rule=Host(`${API_DOMAIN}`)
+      - traefik.http.routers.coolify-template-nodejs-openapi-api.entrypoints=https
+      - traefik.http.routers.coolify-template-nodejs-openapi-api.tls=true
+      - traefik.http.routers.coolify-template-nodejs-openapi-api.tls.certresolver=letsencrypt
+      - traefik.http.services.coolify-template-nodejs-openapi-api.loadbalancer.server.port=4000
+    networks:
+      - coolify
+
+  web:
+    image: ${REGISTRY:-registry.cn-shanghai.aliyuncs.com}/${NAMESPACE:-ptlzc}/${FRONTEND_REPO:-coolify-template-nodejs-openapi-web}:${TAG:-latest}
+    depends_on:
+      - api
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://localhost/healthz']
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=coolify
+      - traefik.http.routers.coolify-template-nodejs-openapi-web.rule=Host(`${APP_DOMAIN}`)
+      - traefik.http.routers.coolify-template-nodejs-openapi-web.entrypoints=https
+      - traefik.http.routers.coolify-template-nodejs-openapi-web.tls=true
+      - traefik.http.routers.coolify-template-nodejs-openapi-web.tls.certresolver=letsencrypt
+      - traefik.http.services.coolify-template-nodejs-openapi-web.loadbalancer.server.port=80
+    networks:
+      - coolify
+
+networks:
+  coolify:
+    external: true
+    name: coolify
