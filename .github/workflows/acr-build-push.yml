@@ -1,0 +1,56 @@
+name: ACR Build & Push
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*', 'release-*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Image tag override'
+        required: false
+
+jobs:
+  build-push:
+    runs-on: ubuntu-latest
+    env:
+      REGISTRY: ${{ secrets.ACR_REGISTRY }}
+      NAMESPACE: ${{ secrets.ACR_NAMESPACE || 'ptlzc' }}
+      TAG: ${{ github.event.inputs.tag || github.ref_name || 'latest' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install pnpm
+        run: npm install -g pnpm
+
+      - name: Install deps
+        run: pnpm install --frozen-lockfile=false
+
+      - name: Resolve image repo from package.json (fallback to secret)
+        run: |
+          PKG_NAME=$(node -e "console.log(require('./package.json').name)")
+          if [ -n "${{ secrets.APP_REPO }}" ]; then
+            echo "APP_REPO=${{ secrets.APP_REPO }}" >> $GITHUB_ENV
+          else
+            echo "APP_REPO=${PKG_NAME}" >> $GITHUB_ENV
+          fi
+
+      - name: Docker login ACR
+        run: echo ${{ secrets.ACR_PASSWORD }} | docker login ${{ env.REGISTRY || 'registry.cn-shanghai.aliyuncs.com' }} -u ${{ secrets.ACR_USERNAME }} --password-stdin
+
+      - name: Build image
+        run: |
+          docker build -f Dockerfile -t ${{ env.REGISTRY || 'registry.cn-shanghai.aliyuncs.com' }}/${{ env.NAMESPACE }}/${{ env.APP_REPO }}:${{ env.TAG }} .
+
+      - name: Push image
+        run: |
+          docker push ${{ env.REGISTRY || 'registry.cn-shanghai.aliyuncs.com' }}/${{ env.NAMESPACE }}/${{ env.APP_REPO }}:${{ env.TAG }}
+
+      - name: Summary
+        run: echo "pushed ${{ env.REGISTRY || 'registry.cn-shanghai.aliyuncs.com' }}/${{ env.NAMESPACE }}/${{ env.APP_REPO }}:${{ env.TAG }}"
